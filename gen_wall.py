@@ -113,18 +113,18 @@ def generate_palette(palette: list[int]) -> dict[str, str]:
     idx = input("Enter base color index: ")
     idx = int(idx)
     r, g, b = palette[idx * 3 : idx * 3 + 3]
-    h, s, l = rgb_to_hsl(r, g, b)
+    hue, sat, light = rgb_to_hsl(r, g, b)
 
     # 1. Monochromatic: Vary lightness
-    mono_light = hsl_to_rgb(h, min(100, l + 20), s)
-    mono_dark = hsl_to_rgb(h, min(10, l - 20), s)
+    mono_light = hsl_to_rgb(hue, min(100, light + 20), sat)
+    mono_dark = hsl_to_rgb(hue, min(5, light - 20), sat)
 
     # 2. Analogous: Shift hue by +/- 30 degrees (30/360)
-    analogous_1 = hsl_to_rgb((h + 30) % 360, l, s)
-    analogous_2 = hsl_to_rgb((h - 30) % 360, l, s)
+    analogous_1 = hsl_to_rgb((hue + 30) % 360, light, sat)
+    analogous_2 = hsl_to_rgb((hue - 30) % 360, light, sat)
 
     # 3. Complementary: Shift hue by 180 degrees (180/360)
-    complementary = hsl_to_rgb((h + 180) % 360, l, s)
+    complementary = hsl_to_rgb((hue + 180) % 360, light, sat)
 
     return {
         "base": rgb_to_hex(r, g, b),
