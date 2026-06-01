@@ -2,7 +2,6 @@ import argparse
 import json
 import math
 import pathlib
-import tomllib
 
 import rich
 from PIL import Image
