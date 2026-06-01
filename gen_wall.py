@@ -1,6 +1,8 @@
 import argparse
+import math
 import pathlib
 
+import rich
 from PIL import Image
 from rich.console import Console
 from rich.table import Table
@@ -27,7 +29,7 @@ class IndexChosenError(Exception):
 def read_params() -> tuple[str, int]:
     parser = argparse.ArgumentParser()
     parser.add_argument("loc", type=str, help="location of the wallpaper")
-    parser.add_argument("-c", "--count", type=int, default=5, help="number of colors to generate")
+    parser.add_argument("-c", "--count", type=int, default=20, help="number of colors to generate")
     args = parser.parse_args()
     return args.loc, args.count
 
@@ -41,13 +43,45 @@ def verify_image(location: str) -> None:
         img.verify()
 
 
-def generate_colorscheme(location: str, color_count: int) -> list[int]:
+def generate_colorscheme(location: str, color_count: int) -> list[tuple[int, int, int]]:
     with Image.open(location) as img:
         palette_img = img.quantize(colors=color_count)
         raw_palette = palette_img.getpalette()
         if raw_palette is None:
             raise PaletteError
-        return raw_palette
+
+        palette: list[tuple[int, int, int]] = []
+        for i in range(0, len(raw_palette), 3):
+            r, g, b = raw_palette[i : i + 3]
+            palette.append((r, g, b))
+
+        return palette
+
+
+def check_similarity(color_palette: list[tuple[int, int, int]]) -> list[tuple[int, int, int]]:
+    result_palette: list[tuple[int, int, int]] = []
+    n = len(color_palette)
+    ignore = set()
+
+    for i in range(n):
+        if color_palette[i] in ignore:
+            continue
+        result_palette.append(color_palette[i])
+        r1, g1, b1 = color_palette[i]
+        for j in range(i + 1, n):
+            if color_palette[j] in ignore:
+                continue
+            r2, g2, b2 = color_palette[j]
+            dist_r = (r1 - r2) ** 2
+            dist_g = (g1 - g2) ** 2
+            dist_b = (b1 - b2) ** 2
+            extra_delta = math.sqrt(((r1 + r2) / 2) * abs(dist_r - dist_b) / 256)
+            similarity_score = math.sqrt(2 * dist_r + 4 * dist_g + 3 * dist_g + extra_delta)
+            if similarity_score < 100:
+                ignore.add(color_palette[j])
+                continue
+
+    return result_palette
 
 
 def rgb_to_hex(red: int, green: int, blue: int) -> str:
@@ -104,10 +138,9 @@ def show_extracted_color(color_codes: list[int]) -> None:
     print()
     console = Console()
     table = Table(title="Extracted Color Palette")
-    table.add_column("Index", justify="center")
-    table.add_column("Color", justify="center")
-    table.add_column("RGB Code", justify="center")
-    table.add_column("Hex Code", justify="center")
+
+    for column in ["Index", "Color", "RGB Code", "Hex Code"]:
+        table.add_column(column, justify="center")
 
     for idx in range(0, len(color_codes), 3):
         red, green, blue = color_codes[idx : idx + 3]
@@ -117,15 +150,48 @@ def show_extracted_color(color_codes: list[int]) -> None:
     console.print(table)
 
 
-def generate_palette(palette: list[int]) -> dict[str, str]:
+def show_generated_palette(generated_palette: dict[str, str]) -> None:
     print()
-    max_idx = len(palette) // 3
+    console = Console()
+    table = Table(title="Generated Color Palette")
+    for column in ["Name", "Color", "Hex Code"]:
+        justify = "left" if column == "Name" else "center"
+        table.add_column(column, justify=justify)
+
+    for name, color in generated_palette.items():
+        table.add_row(name, f"[{color}]███[/]", color.upper())
+
+    console.print(table)
+
+
+def generate_table(title: str, column_names: list[str], palette: list[tuple[int, int, int]] | dict[str, str]) -> None:
+    print()
+    console = Console()
+    table = Table(title=title)
+    for column in column_names:
+        justify = "left" if column == "Name" else "center"
+        table.add_column(column, justify=justify)
+
+    if isinstance(palette, list):
+        for idx, (red, green, blue) in enumerate(palette):
+            color = rgb_to_hex(red, green, blue)
+            table.add_row(f"{idx}", f"[{color}]███[/]", f"{red} {green} {blue}", color.upper())
+    elif isinstance(palette, dict):
+        for name, color in palette.items():
+            table.add_row(name, f"[{color}]███[/]", color.upper())
+
+    console.print(table)
+
+
+def generate_palette(palette: list[tuple[int, int, int]]) -> dict[str, str]:
+    print()
+    max_idx = len(palette)
     idx = input("Enter base color index: ")
     idx = int(idx)
     if idx < 0 or idx >= max_idx:
         raise IndexChosenError(max_idx=max_idx, inp_idx=idx)
 
-    r, g, b = palette[idx * 3 : idx * 3 + 3]
+    r, g, b = palette[idx]
     hue, sat, light = rgb_to_hsl(r, g, b)
 
     # 1. Monochromatic: Vary lightness
@@ -151,28 +217,14 @@ def generate_palette(palette: list[int]) -> dict[str, str]:
     }
 
 
-def show_generated_palette(generated_palette: dict[str, str]) -> None:
-    print()
-    console = Console()
-    table = Table(title="Generated Color Palette")
-    table.add_column("Name", justify="center")
-    table.add_column("Color", justify="center")
-    table.add_column("Hex Code", justify="center")
-
-    for name, color in generated_palette.items():
-        table.add_row(name, f"[{color}]███[/]", color.upper())
-
-    console.print(table)
-
-
 def main() -> None:
     wallpaper_location, count = read_params()
     verify_image(wallpaper_location)
-    generate_colorscheme(wallpaper_location, count)
     color_palette = generate_colorscheme(wallpaper_location, count)
-    show_extracted_color(color_palette)
-    gen_palette = generate_palette(color_palette)
-    show_generated_palette(gen_palette)
+    updated_palette = check_similarity(color_palette)
+    generate_table("Extracted Color Palette", ["Index", "Color", "RGB Code", "Hex Code"], updated_palette)
+    gen_palette = generate_palette(updated_palette)
+    generate_table("Generated Color Palette", ["Name", "Color", "Hex Code"], gen_palette)
 
 
 if __name__ == "__main__":
