@@ -5,6 +5,9 @@ from PIL import Image
 from rich.console import Console
 from rich.table import Table
 
+BLACK = "#36454F"
+WHITE = "#C2C2C2"
+
 
 class LocationError(Exception):
     def __init__(self, location: str) -> None:
@@ -116,15 +119,15 @@ def generate_palette(palette: list[int]) -> dict[str, str]:
     hue, sat, light = rgb_to_hsl(r, g, b)
 
     # 1. Monochromatic: Vary lightness
-    mono_light = hsl_to_rgb(hue, min(100, light + 20), sat)
-    mono_dark = hsl_to_rgb(hue, min(5, light - 20), sat)
+    mono_light = hsl_to_rgb(hue, sat, min(100, light + 20))
+    mono_dark = hsl_to_rgb(hue, sat, max(5, light - 20))
 
     # 2. Analogous: Shift hue by +/- 30 degrees (30/360)
-    analogous_1 = hsl_to_rgb((hue + 30) % 360, light, sat)
-    analogous_2 = hsl_to_rgb((hue - 30) % 360, light, sat)
+    analogous_1 = hsl_to_rgb((hue + 30) % 360, sat, light)
+    analogous_2 = hsl_to_rgb((hue - 30) % 360, sat, light)
 
     # 3. Complementary: Shift hue by 180 degrees (180/360)
-    complementary = hsl_to_rgb((hue + 180) % 360, light, sat)
+    complementary = hsl_to_rgb((hue + 180) % 360, sat, light)
 
     return {
         "base": rgb_to_hex(r, g, b),
@@ -133,8 +136,8 @@ def generate_palette(palette: list[int]) -> dict[str, str]:
         "analog_1": rgb_to_hex(*analogous_1),
         "analog_2": rgb_to_hex(*analogous_2),
         "complimentary": rgb_to_hex(*complementary),
-        "black": "#36454F",
-        "white": "#C2C2C2",
+        "black": BLACK,
+        "white": WHITE,
     }
 
 
