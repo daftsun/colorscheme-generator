@@ -19,6 +19,11 @@ class PaletteError(Exception):
         super().__init__("No color palette found for image")
 
 
+class IndexChosenError(Exception):
+    def __init__(self, max_idx: int, inp_idx: int) -> None:
+        super().__init__(f"Index: {inp_idx} not between 0 and {max_idx - 1}")
+
+
 def read_params() -> tuple[str, int]:
     parser = argparse.ArgumentParser()
     parser.add_argument("loc", type=str, help="location of the wallpaper")
@@ -96,6 +101,7 @@ def hsl_to_rgb(hue: float, saturation: float, lightness: float) -> tuple[int, in
 
 
 def show_extracted_color(color_codes: list[int]) -> None:
+    print()
     console = Console()
     table = Table(title="Extracted Color Palette")
     table.add_column("Index", justify="center")
@@ -113,8 +119,12 @@ def show_extracted_color(color_codes: list[int]) -> None:
 
 def generate_palette(palette: list[int]) -> dict[str, str]:
     print()
+    max_idx = len(palette) // 3
     idx = input("Enter base color index: ")
     idx = int(idx)
+    if idx < 0 or idx >= max_idx:
+        raise IndexChosenError(max_idx=max_idx, inp_idx=idx)
+
     r, g, b = palette[idx * 3 : idx * 3 + 3]
     hue, sat, light = rgb_to_hsl(r, g, b)
 
@@ -142,8 +152,9 @@ def generate_palette(palette: list[int]) -> dict[str, str]:
 
 
 def show_generated_palette(generated_palette: dict[str, str]) -> None:
+    print()
     console = Console()
-    table = Table(title="Extracted Color Palette")
+    table = Table(title="Generated Color Palette")
     table.add_column("Name", justify="center")
     table.add_column("Color", justify="center")
     table.add_column("Hex Code", justify="center")
@@ -156,7 +167,6 @@ def show_generated_palette(generated_palette: dict[str, str]) -> None:
 
 def main() -> None:
     wallpaper_location, count = read_params()
-    print()
     verify_image(wallpaper_location)
     generate_colorscheme(wallpaper_location, count)
     color_palette = generate_colorscheme(wallpaper_location, count)
