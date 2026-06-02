@@ -27,12 +27,13 @@ class IndexChosenError(Exception):
         super().__init__(f"Index: {inp_idx} not between 0 and {max_idx - 1}")
 
 
-def read_params() -> tuple[str, int]:
+def read_params() -> tuple[str, int, bool]:
     parser = argparse.ArgumentParser()
     parser.add_argument("loc", type=str, help="location of the wallpaper")
     parser.add_argument("-c", "--count", type=int, default=20, help="number of colors to generate")
+    parser.add_argument("-noq", type=bool, nargs="?", const=True, default=False, help="don't ask any question")
     args = parser.parse_args()
-    return args.loc, args.count
+    return args.loc, args.count, args.noq
 
 
 def verify_image(location: str) -> None:
@@ -184,14 +185,7 @@ def generate_table(title: str, column_names: list[str], palette: list[tuple[int,
     console.print(table)
 
 
-def generate_palette(palette: list[tuple[int, int, int]]) -> dict[str, str]:
-    print()
-    max_idx = len(palette)
-    idx = input("Enter base color index: ")
-    idx = int(idx)
-    if idx < 0 or idx >= max_idx:
-        raise IndexChosenError(max_idx=max_idx, inp_idx=idx)
-
+def generate_palette(idx: int, palette: list[tuple[int, int, int]]) -> dict[str, str]:
     r, g, b = palette[idx]
     hue, sat, light = rgb_to_hsl(r, g, b)
 
@@ -252,31 +246,48 @@ def create_toml_file(palette: dict[str, str]) -> None:
     rich.print(f"[green]Exported color palette to {file_name}[/]")
 
 
-def export_colors(palette: dict[str, str]) -> None:
-    formats = {"css": create_css_file, "json": create_json_file, "ini": create_ini_file, "toml": create_toml_file}
-    print()
-    rich.print("[bold blue]Supported export formats:[/]")
+FORMATS = {"css": create_css_file, "json": create_json_file, "ini": create_ini_file, "toml": create_toml_file}
+
+
+def export_colors(user_formats: str, palette: dict[str, str]) -> None:
+    formats = FORMATS.keys() if user_formats == "all" else user_formats.split()
+
     for fmt in formats:
-        rich.print(f"[yellow]{fmt}[/]", end=" ")
-
-    user_formats = input("\nEnter format(s) (space separated): ").split()
-
-    for fmt in user_formats:
-        if fmt in formats:
-            formats[fmt](palette)
+        if fmt in FORMATS:
+            FORMATS[fmt](palette)
         else:
             rich.print(f"[red]Format: {fmt} not supported, skipping export for it.[/]")
 
 
+def choose_color_index(max_idx: int) -> int:
+    idx = input("\nEnter base color index: ")
+    idx = int(idx)
+    if idx < 0 or idx >= max_idx:
+        raise IndexChosenError(max_idx=max_idx, inp_idx=idx)
+    return idx
+
+
+def ask_formats() -> str:
+    rich.print("\n[bold blue]Supported export formats:[/]")
+
+    for fmt in FORMATS:
+        rich.print(f"[yellow]{fmt}[/]", end=" ")
+
+    user_formats = input("\nEnter format(s) (space sep) (default: all): ")
+    return "" if user_formats.strip() == "" else user_formats
+
+
 def main() -> None:
-    wallpaper_location, count = read_params()
+    wallpaper_location, count, noq = read_params()
     verify_image(wallpaper_location)
     color_palette = generate_colorscheme(wallpaper_location, count)
     updated_palette = check_similarity(color_palette)
     generate_table("Extracted Color Palette", ["Index", "Color", "RGB Code", "Hex Code"], updated_palette)
-    gen_palette = generate_palette(updated_palette)
+    idx = 0 if noq else choose_color_index(len(updated_palette))
+    gen_palette = generate_palette(idx, updated_palette)
     generate_table("Generated Color Palette", ["Name", "Color", "Hex Code"], gen_palette)
-    export_colors(gen_palette)
+    user_formats = "all" if noq else ask_formats()
+    export_colors(user_formats, gen_palette)
 
 
 if __name__ == "__main__":
