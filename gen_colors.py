@@ -31,7 +31,7 @@ def read_params() -> tuple[str, int, bool]:
     parser = argparse.ArgumentParser()
     parser.add_argument("loc", type=str, help="location of the wallpaper")
     parser.add_argument("-c", "--count", type=int, default=20, help="number of colors to generate")
-    parser.add_argument("-noq", type=bool, nargs="?", const=True, default=False, help="don't ask any question")
+    parser.add_argument("-noq", type=bool, nargs="?", const=True, default=False, help="no questions asked")
     args = parser.parse_args()
     return args.loc, args.count, args.noq
 
