@@ -1,7 +1,7 @@
 [project]
 name = "colorscheme-generator"
 version = "0.1.0"
-description = "Colorscheme generator for terminal and code editors"
+description = "Colorscheme generator using a image reference"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [

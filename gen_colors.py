@@ -260,7 +260,9 @@ def export_colors(user_formats: str, palette: dict[str, str]) -> None:
 
 
 def choose_color_index(max_idx: int) -> int:
-    idx = input("\nEnter base color index: ")
+    idx = input("\nEnter base color index (default: 0): ")
+    if idx == "":
+        idx = 0
     idx = int(idx)
     if idx < 0 or idx >= max_idx:
         raise IndexChosenError(max_idx=max_idx, inp_idx=idx)
@@ -274,7 +276,7 @@ def ask_formats() -> str:
         rich.print(f"[yellow]{fmt}[/]", end=" ")
 
     user_formats = input("\nEnter format(s) (space sep) (default: all): ")
-    return "" if user_formats.strip() == "" else user_formats
+    return "all" if user_formats.strip() == "" else user_formats
 
 
 def main() -> None:
