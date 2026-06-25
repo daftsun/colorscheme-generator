@@ -8,32 +8,19 @@ from PIL import Image
 from rich.console import Console
 from rich.table import Table
 
-BLACK = "#36454F"
+from exceptions import IndexChosenError, LocationError, PaletteError
+
+BLACK = "#343a40"
 WHITE = "#C2C2C2"
-
-
-class LocationError(Exception):
-    def __init__(self, location: str) -> None:
-        super().__init__(f"File doesn't exists at: {location}")
-
-
-class PaletteError(Exception):
-    def __init__(self) -> None:
-        super().__init__("No color palette found for image")
-
-
-class IndexChosenError(Exception):
-    def __init__(self, max_idx: int, inp_idx: int) -> None:
-        super().__init__(f"Index: {inp_idx} not between 0 and {max_idx - 1}")
 
 
 def read_params() -> tuple[str, int, bool]:
     parser = argparse.ArgumentParser()
     parser.add_argument("loc", type=str, help="location of the wallpaper")
-    parser.add_argument("-c", "--count", type=int, default=20, help="number of colors to generate")
-    parser.add_argument("-noq", type=bool, nargs="?", const=True, default=False, help="no questions asked")
+    parser.add_argument("-c", "--count", type=int, default=5, help="number of colors to extract")
+    parser.add_argument("-q", "--quiet", type=bool, nargs="?", const=True, default=False, help="run with defaults")
     args = parser.parse_args()
-    return args.loc, args.count, args.noq
+    return args.loc, args.count, args.quiet
 
 
 def verify_image(location: str) -> None:
